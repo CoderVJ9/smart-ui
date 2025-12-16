@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      // import {
+      //   createRenderer,
+      //   h,
+      //   render,
+      // } from "/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js";
+
+      import { render, h, Text, Fragment } from "./runtime-dom.esm.js";
+
+      // const { render } = createRenderer({
+      //   createElement(type, props, children) {
+      //     console.log(type, props, children);
+      //     return document.createElement(type);
+      //   },
+      //   setElementText(node, text) {
+      //     node.textContent = text;
+      //   },
+      //   insert(el, parent, anchor = null) {
+      //     parent.insertBefore(el, anchor);
+      //   },
+      // });
+
+      render(
+        h("div", [
+          h("li", { key: "a" }, "a"),
+          h("li", { key: "b" }, "b"),
+          h("li", { key: "c" }, "c"),
+          h("li", { key: "d" }, "d"),
+          h("li", { key: "e" }, "e"),
+          h("li", { key: "f" }, "f"),
+          h("li", { key: "g" }, "g"),
+        ]),
+        app
+      );
+      setTimeout(() => {
+        render(
+          h(Fragment, [h(Text, { key: "a" }, "hello world"), h("div", "hhhh")]),
+          app
+        );
+        setTimeout(() => {
+          render(h(Fragment, [h(Text, { key: "a" }, "hello world")]), app);
+        }, 1000);
+      }, 1000);
+    </script>
+  </body>
+</html>

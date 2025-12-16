@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      // import {
+      //   reactive,
+      //   effect,
+      //   computed,
+      // } from "/node_modules/@vue/reactivity/dist/reactivity.esm-browser.js";
+
+      import { reactive, effect, computed } from "./reactivity.esm.js";
+      const state = reactive({ name: "name1", age: 12, flag: true });
+
+      const act = computed({
+        get() {
+          console.log("computed");
+          return state.name + "**";
+        },
+        set(newValue) {
+          console.log("computed set", newValue);
+        },
+      });
+
+      effect(() => {
+        app.innerText = act.value;
+      });
+
+      setTimeout(() => {
+        state.name = "name2";
+      }, 1000);
+      //   const runner = effect(
+      //     () => {
+      //       // state.count = Math.random();
+      //       console.log("------");
+      //       app.innerText = state.flag ? state.name : state.age;
+      //     },
+      //     {
+      //       scheduler() {
+      //         console.log("scheduler");
+      //         runner();
+      //       },
+      //     }
+      //   );
+
+      //   // runner.effect.stop();
+      //   setTimeout(() => {
+      //     state.flag = false;
+      //   }, 1000);
+      //
+    </script>
+  </body>
+</html>

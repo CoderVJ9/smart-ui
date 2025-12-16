@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      // import {
+      //   createRenderer,
+      //   h,
+      //   render,
+      //   getCurrentInstance,
+      //   Fragment,
+      //   ref,
+      // } from "/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js";
+
+      import { render, h, Text, Fragment, ref } from "./runtime-dom.esm.js";
+
+      const componentA = {
+        setup(props, ctx) {
+          const { emit } = ctx;
+          const name = ref("Vue 3");
+          const handleClick = () => {
+            emit("myClick");
+          };
+          return { name, handleClick };
+          // return () => {
+          //   return h(Fragment, [
+          //     h("button", { onClick: handleClick }, "点我2"),
+          //     h("div", name.value),
+          //   ]);
+          // };
+        },
+        render(proxy) {
+          return h(Fragment, [
+            h("button", { onClick: proxy.handleClick }, "点我"),
+            h("div", proxy.name),
+          ]);
+        },
+      };
+      render(
+        h(componentA, {
+          onMyClick: () => {
+            alert("click");
+          },
+        }),
+        document.getElementById("app")
+      );
+    </script>
+  </body>
+</html>

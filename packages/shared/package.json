@@ -1,0 +1,12 @@
+{
+  "name": "@vue3/shared",
+  "version": "1.0.0",
+  "packageManager": "pnpm@10.8.1",
+  "module": "dist/shared.esm-bundler.js",
+  "buildOptions": {
+    "formats": [
+      "esm-bundler",
+      "cjs"
+    ]
+  }
+}

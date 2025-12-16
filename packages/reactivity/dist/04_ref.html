@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      // import {
+      //   reactive,
+      //   computed,
+      //   effect,
+      //   effectScope,
+      // } from "/node_modules/vue/dist/vue.esm-browser.js";
+
+      import {
+        effectScope,
+        proxyRefs,
+        toRefs,
+        reactive,
+        watchEffect,
+        effect,
+        ref,
+        toRef,
+      } from "./reactivity.esm.js";
+      const state = reactive({ name: "name1", age: 12, flag: true });
+      const scope = effectScope();
+      console.log(scope);
+      scope.run(() => {
+        effect(() => {
+          console.log("1=", state.age);
+        });
+
+        const scope2 = effectScope();
+        scope2.run(() => {
+          effect(() => {
+            console.log("2=", state.age);
+          });
+        });
+      });
+      scope.run(() => {
+        effect(() => {
+          console.log("3=", state.age);
+        });
+      });
+      scope.stop();
+      setTimeout(() => {
+        state.age = 13;
+      }, 1000);
+    </script>
+  </body>
+</html>
