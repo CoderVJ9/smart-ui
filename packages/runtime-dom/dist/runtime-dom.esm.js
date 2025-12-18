@@ -139,6 +139,8 @@ function createVNode(type, props, children) {
     let type2 = 0;
     if (Array.isArray(children)) {
       type2 = 16 /* ARRAY_CHILDREN */;
+    } else if (isObj(children)) {
+      type2 = 32 /* SLOTS_CHILDREN */;
     } else {
       type2 = 8 /* TEXT_CHILDREN */;
     }
@@ -523,7 +525,8 @@ function createComponentInstance(vnode) {
 }
 var publicProperties = {
   $props: (i) => i.props,
-  $attrs: (i) => i.attrs
+  $attrs: (i) => i.attrs,
+  $slots: (i) => i.slots
 };
 var instanceProxyHandler = {
   get(target, key) {
@@ -552,9 +555,15 @@ var instanceProxyHandler = {
     return true;
   }
 };
+function initSlots(instance, children) {
+  if (instance.vnode.shapeFlag & 32 /* SLOTS_CHILDREN */) {
+    instance.slots = children;
+  }
+}
 function setupComponent(instance) {
-  const { type, props } = instance.vnode;
+  const { type, props, children } = instance.vnode;
   initProps(instance, props);
+  initSlots(instance, children);
   instance.proxy = new Proxy(instance, instanceProxyHandler);
   const setup = type.setup;
   if (setup) {
@@ -564,7 +573,11 @@ function setupComponent(instance) {
         const eventName = `on${event[0].toUpperCase() + event.slice(1)}`;
         const handle = instance.vnode.props[eventName];
         handle && handle(...args);
-      }
+      },
+      expose: (exposed) => {
+        instance.exposed = exposed || {};
+      },
+      slots: instance.slots
     };
     const setupResult = setup.call(
       instance.proxy,

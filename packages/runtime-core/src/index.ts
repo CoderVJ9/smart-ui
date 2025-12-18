@@ -1,4 +1,4 @@
-import { hasOwn, ShapeFlags } from "@vue3/shared";
+import { hasOwn, isString, ShapeFlags } from "@vue3/shared";
 import { isSameVnode } from "./vnode";
 import { reactive, ReactiveEffect, track } from "@vue3/reactivity";
 import { queueJob } from "./scheduler";
@@ -359,7 +359,6 @@ export function createRenderer(options) {
       unmount(n1);
       n1 = null;
     }
-
     const { type, shapeFlag } = n2;
     switch (type) {
       case Text:

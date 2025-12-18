@@ -24,11 +24,12 @@ export function createVNode(type, props, children?) {
     key: props?.key,
     el: null,
   };
-
   if (children) {
     let type = 0;
     if (Array.isArray(children)) {
       type = ShapeFlags.ARRAY_CHILDREN;
+    } else if (isObj(children)) {
+      type = ShapeFlags.SLOTS_CHILDREN;
     } else {
       type = ShapeFlags.TEXT_CHILDREN;
     }

@@ -1,4 +1,4 @@
-import { hasOwn, isFunction } from "@vue3/shared";
+import { hasOwn, isFunction, ShapeFlags } from "@vue3/shared";
 import { initProps } from "./initProps";
 import { proxyRefs, reactive } from "@vue3/reactivity";
 
@@ -23,6 +23,7 @@ export function createComponentInstance(vnode) {
 const publicProperties = {
   $props: (i) => i.props,
   $attrs: (i) => i.attrs,
+  $slots: (i) => i.slots,
 };
 
 const instanceProxyHandler = {
@@ -52,9 +53,17 @@ const instanceProxyHandler = {
     return true;
   },
 };
+
+function initSlots(instance, children) {
+  if (instance.vnode.shapeFlag & ShapeFlags.SLOTS_CHILDREN) {
+    instance.slots = children;
+  }
+}
+
 export function setupComponent(instance) {
-  const { type, props } = instance.vnode;
+  const { type, props, children } = instance.vnode;
   initProps(instance, props);
+  initSlots(instance, children);
   instance.proxy = new Proxy(instance, instanceProxyHandler);
 
   //如果有setup , 则设置上setup
@@ -67,6 +76,10 @@ export function setupComponent(instance) {
         const handle = instance.vnode.props[eventName];
         handle && handle(...args);
       },
+      expose: (exposed) => {
+        instance.exposed = exposed || {};
+      },
+      slots: instance.slots,
     };
 
     const setupResult = setup.call(

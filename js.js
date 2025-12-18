@@ -39,4 +39,18 @@ function getSequence(arr) {
   return ans;
 }
 
-console.log("==     ", getSequence([2, 3, 1, 5, 6, 8, 7, 9, 4]));
+function load() {
+  setTimeout(() => {
+    console.log("load1");
+    load();
+  }, 0);
+}
+
+function then1() {
+  Promise.resolve().then(() => {
+    console.log("then1");
+    // then1();
+  });
+}
+then1();
+load();
