@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="root"></div>
+    <div id="root2"></div>
+    <script type="module">
+      // import {
+      //   createRenderer,
+      //   h,
+      //   render,
+      //   getCurrentInstance,
+      //   Fragment,
+      //   ref,
+      //   Teleport,
+      // } from "/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js";
+
+      import {
+        render,
+        h,
+        Text,
+        Fragment,
+        ref,
+        onMounted,
+        getCurrentInstance,
+        defineAsyncComponent,
+        Teleport,
+        provide,
+        inject,
+        reactive,
+      } from "./runtime-dom.esm.js";
+      const GrandSon = {
+        setup() {
+          const state = inject("name", "默认值");
+          const age = inject("age", "默认值");
+          return () => h("div", state.value + "---" + age);
+        },
+      };
+      const Son = {
+        setup() {
+          provide("age", 222);
+
+          return () => h(GrandSon);
+        },
+      };
+
+      const Home = {
+        setup() {
+          const state = ref("lv");
+          provide("name", state);
+          provide("age", 12);
+
+          return () => h(Fragment, null, [h(Son), h("div", null, state.value)]);
+        },
+      };
+      render(h(Home), app);
+      // render(
+      //   h(Fragment, null, [
+      //     h(Teleport, { to: "#root", a: "a" }, [
+      //       h(Home, { style: { color: "red" } }),
+      //     ]),
+      //   ]),
+      //   app
+      // );
+    </script>
+  </body>
+</html>

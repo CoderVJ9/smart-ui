@@ -116,6 +116,33 @@ var hasOwnProperty = Object.prototype.hasOwnProperty;
 function hasOwn(obj, key) {
   return hasOwnProperty.call(obj, key);
 }
+function invokeArrayFns(fns) {
+  for (let i = 0; i < fns.length; i++) {
+    fns[i]();
+  }
+}
+
+// packages/runtime-core/src/teleport.ts
+var TeleportImpl = {
+  __isTeleport: true,
+  process(n1, n2, container, anchor, operators) {
+    const { mountChildren, patchChildren, move, query } = operators;
+    if (n1 == null) {
+      const target = query(n2.props.to) ?? document.body;
+      target && mountChildren(n2.children, target);
+    } else {
+      patchChildren(n1, n2, n1.target, anchor);
+      n2.target = n1.target;
+      if (n2.props.to !== n1.props.to) {
+        const target = n2.target = query(n2.props.to) ?? document.body;
+        n2.children.forEach((child) => {
+          move(child, target, anchor);
+        });
+      }
+    }
+  }
+};
+var isTeleport = (type) => !!type.__isTeleport;
 
 // packages/runtime-core/src/vnode.ts
 function isVnode(vnode) {
@@ -125,7 +152,7 @@ function isSameVnode(vnode1, vnode2) {
   return vnode1.type === vnode2.type && vnode1.key === vnode2.key;
 }
 function createVNode(type, props, children) {
-  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isObj(type) ? 4 /* STATEFUL_COMPONENT */ : 0;
+  const shapeFlag = isString(type) ? 1 /* ELEMENT */ : isTeleport(type) ? 64 /* TELEPORT */ : isObj(type) ? 4 /* STATEFUL_COMPONENT */ : 0;
   const vnode = {
     __v_isVNode: true,
     type,
@@ -507,7 +534,14 @@ function initProps(instance, rawProps) {
 }
 
 // packages/runtime-core/src/component.ts
-function createComponentInstance(vnode) {
+var currentInstance = null;
+function setCurrentInstance(instance) {
+  currentInstance = instance;
+}
+function getCurrentInstance() {
+  return currentInstance;
+}
+function createComponentInstance(vnode, parent) {
   const instance = {
     data: null,
     vnode,
@@ -519,7 +553,9 @@ function createComponentInstance(vnode) {
     attrs: {},
     proxy: null,
     render: null,
-    setupState: {}
+    setupState: {},
+    parent,
+    provides: parent ? parent.provides : /* @__PURE__ */ Object.create(null)
   };
   return instance;
 }
@@ -565,6 +601,7 @@ function setupComponent(instance) {
   initProps(instance, props);
   initSlots(instance, children);
   instance.proxy = new Proxy(instance, instanceProxyHandler);
+  setCurrentInstance(instance);
   const setup = type.setup;
   if (setup) {
     const setupContext = {
@@ -590,6 +627,7 @@ function setupComponent(instance) {
       instance.setupState = proxyRefs(setupResult);
     }
   }
+  setCurrentInstance(null);
   let data = type.data;
   if (data) {
     if (isFunction(data)) {
@@ -601,29 +639,7 @@ function setupComponent(instance) {
   }
 }
 
-// packages/runtime-core/src/h.ts
-function h(type, propsOrChildren, children) {
-  const l = arguments.length;
-  if (l === 2) {
-    if (isObj(propsOrChildren)) {
-      if (isVnode(propsOrChildren)) {
-        return createVNode(type, null, [propsOrChildren]);
-      }
-      return createVNode(type, propsOrChildren);
-    } else {
-      return createVNode(type, null, propsOrChildren);
-    }
-  } else {
-    if (l > 3) {
-      children = Array.from(arguments).slice(2);
-    } else if (l === 3 && isVnode(children)) {
-      children = [children];
-    }
-    return createVNode(type, propsOrChildren, children);
-  }
-}
-
-// packages/runtime-core/src/index.ts
+// packages/runtime-core/src/render.ts
 var Text = Symbol("Text");
 var Fragment = Symbol("Fragment");
 function createRenderer(options) {
@@ -637,12 +653,13 @@ function createRenderer(options) {
     setText: hostSetText,
     setElementText: hostSetElementText,
     parentNode: hostParentNode,
-    nextSibling: hostNextSibling
+    nextSibling: hostNextSibling,
+    querySelector: hostQuerySelector
   } = options;
-  const mountChildren = (children, container) => {
+  const mountChildren = (children, container, anchor = null, parent = null) => {
     for (let i = 0; i < children.length; i++) {
       const child = children[i];
-      patch(null, child, container);
+      patch(null, child, container, anchor, parent);
     }
   };
   const unmountChildren = (children) => {
@@ -650,7 +667,7 @@ function createRenderer(options) {
       unmount(children[i]);
     }
   };
-  const mountElement = (vnode, container, anchor) => {
+  const mountElement = (vnode, container, anchor, parent = null) => {
     const { type, props, shapeFlag } = vnode;
     const el = vnode.el = hostCreateElement(type);
     if (props) {
@@ -661,7 +678,7 @@ function createRenderer(options) {
     if (shapeFlag & 8 /* TEXT_CHILDREN */) {
       hostSetElementText(el, vnode.children);
     } else if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
-      mountChildren(vnode.children, el);
+      mountChildren(vnode.children, el, parent);
     }
     return hostInsert(el, container, anchor);
   };
@@ -789,9 +806,9 @@ function createRenderer(options) {
     patchProps(el, prevProps, nextProps);
     patchChildren(n1, n2, el);
   };
-  const processElement = (n1, n2, container, anchor) => {
+  const processElement = (n1, n2, container, anchor, parent) => {
     if (n1 == null) {
-      mountElement(n2, container, anchor);
+      mountElement(n2, container, anchor, parent);
     } else {
       patchElement(n1, n2, container);
     }
@@ -806,8 +823,8 @@ function createRenderer(options) {
       }
     }
   };
-  const mountComponent = (vnode, container, anchor) => {
-    const instance = vnode.component = createComponentInstance(vnode);
+  const mountComponent = (vnode, container, anchor, parent) => {
+    const instance = vnode.component = createComponentInstance(vnode, parent);
     setupComponent(instance);
     setupRenderEffect(instance, container, anchor);
   };
@@ -827,24 +844,38 @@ function createRenderer(options) {
     instance.next = null;
     instance.vnode = nextVnode;
     updateProps(instance.props, nextVnode.props);
+    instance.slots = nextVnode.children;
   };
   const setupRenderEffect = (instance, container, anchor) => {
     const effect2 = new ReactiveEffect(
       () => {
         const { render: render3 } = instance;
         if (instance.mounted) {
-          const { next } = instance;
+          const { next, bu, u } = instance;
           if (next) {
             updateComponentPreRender(instance, next);
           }
+          if (bu) {
+            invokeArrayFns(bu);
+          }
           const subTree = render3.call(instance.proxy, instance.proxy);
-          patch(instance.subTree, subTree, container);
+          patch(instance.subTree, subTree, container, anchor, instance);
           instance.subTree = subTree;
+          if (u) {
+            invokeArrayFns(u);
+          }
         } else {
+          const { bm, m } = instance;
+          if (bm) {
+            invokeArrayFns(bm);
+          }
           const subTree = render3.call(instance.proxy, instance.proxy);
           instance.subTree = subTree;
-          patch(null, subTree, container, anchor);
+          patch(null, subTree, container, anchor, instance);
           instance.mounted = true;
+          if (m) {
+            invokeArrayFns(m);
+          }
         }
       },
       () => {
@@ -868,9 +899,9 @@ function createRenderer(options) {
     return false;
   };
   const shouldComponentUpdate = (n1, n2) => {
-    const { props: prevProps, children: prevChildren = [] } = n1;
-    const { props: nextProps, children: nextChildren = [] } = n2;
-    if (prevChildren.length || nextChildren.length) {
+    const { props: prevProps, children: prevChildren } = n1;
+    const { props: nextProps, children: nextChildren } = n2;
+    if (prevChildren || nextChildren) {
       return true;
     }
     if (prevProps === nextProps) return false;
@@ -884,21 +915,35 @@ function createRenderer(options) {
       instance.update();
     }
   };
-  const processComponent = (n1, n2, container, anchor) => {
+  const processComponent = (n1, n2, container, anchor, parent) => {
     if (n1 === null) {
-      mountComponent(n2, container, anchor);
+      mountComponent(n2, container, anchor, parent);
     } else {
       updateComponent(n1, n2);
     }
   };
-  const processFragment = (n1, n2, container) => {
+  const processFragment = (n1, n2, container, anchor = null, parent = null) => {
     if (n1 === null) {
-      mountChildren(n2.children, container);
+      mountChildren(n2.children, container, anchor, parent);
     } else {
       patchKeyedChildren(n1.children, n2.children, container);
     }
   };
-  const patch = (n1, n2, container, anchor = null) => {
+  const processTeleport = (n1, n2, container, anchor) => {
+    n2.type.process(n1, n2, container, anchor, {
+      mountChildren,
+      patchChildren,
+      move: (vnode, container2, anchor2) => {
+        hostInsert(
+          vnode.component ? vnode.component.subTree.el : vnode.el,
+          container2,
+          anchor2
+        );
+      },
+      query: hostQuerySelector
+    });
+  };
+  const patch = (n1, n2, container, anchor = null, parent = null) => {
     if (n1 === n2) {
       return;
     }
@@ -912,21 +957,25 @@ function createRenderer(options) {
         processText(n1, n2, container);
         break;
       case Fragment:
-        processFragment(n1, n2, container);
+        processFragment(n1, n2, container, anchor, parent);
         break;
       default:
         if (shapeFlag & 1 /* ELEMENT */) {
-          processElement(n1, n2, container, anchor);
+          processElement(n1, n2, container, anchor, parent);
         } else if (shapeFlag & 4 /* STATEFUL_COMPONENT */) {
-          processComponent(n1, n2, container, anchor);
+          processComponent(n1, n2, container, anchor, parent);
+        } else if (shapeFlag & 64 /* TELEPORT */) {
+          processTeleport(n1, n2, container, anchor);
         }
         break;
     }
   };
   const unmount = (vnode) => {
-    const { type } = vnode;
+    const { type, shapeFlag } = vnode;
     if (type === Fragment) {
       unmountChildren(vnode.children);
+    } else if (shapeFlag & 6 /* COMPONENT */) {
+      unmount(vnode.component.subTree);
     } else {
       hostRemove(vnode.el);
     }
@@ -981,6 +1030,128 @@ function getSequence(arr) {
   return ans;
 }
 
+// packages/runtime-core/src/h.ts
+function h(type, propsOrChildren, children) {
+  const l = arguments.length;
+  if (l === 2) {
+    if (isObj(propsOrChildren)) {
+      if (isVnode(propsOrChildren)) {
+        return createVNode(type, null, [propsOrChildren]);
+      }
+      return createVNode(type, propsOrChildren);
+    } else {
+      return createVNode(type, null, propsOrChildren);
+    }
+  } else {
+    if (l > 3) {
+      children = Array.from(arguments).slice(2);
+    } else if (l === 3 && isVnode(children)) {
+      children = [children];
+    }
+    return createVNode(type, propsOrChildren, children);
+  }
+}
+
+// packages/runtime-core/src/apiLifeCycle.ts
+var createLifecycleHook = (type) => {
+  return (hook) => {
+    const instance = getCurrentInstance();
+    const hooks = instance[type] || (instance[type] = []);
+    const invoker = () => {
+      setCurrentInstance(instance);
+      hook();
+      setCurrentInstance(null);
+    };
+    hooks.push(invoker);
+  };
+};
+var onBeforeMount = createLifecycleHook("bm" /* BEFORE_MOUNT */);
+var onMounted = createLifecycleHook("m" /* MOUNTED */);
+var onBeforeUpdate = createLifecycleHook("bu" /* BEFORE_UPDATE */);
+var onUpdated = createLifecycleHook("u" /* UPDATED */);
+
+// packages/runtime-core/src/defineAsyncComponent.ts
+function defineAsyncComponent(options) {
+  if (isFunction(options)) {
+    options = { loader: options };
+  }
+  let Component;
+  let delayTimer = null;
+  let timeoutTimer = null;
+  return {
+    setup() {
+      const { loader } = options;
+      const loaded = ref(false);
+      const loading = ref(false);
+      const error = ref(false);
+      const attempts = ref(0);
+      function load() {
+        return loader().catch((err) => {
+          attempts.value++;
+          return new Promise((resolve, reject) => {
+            if (options.onError) {
+              const retry = () => resolve(load());
+              const fail = () => reject(err);
+              options.onError(err, retry, fail, attempts.value);
+            } else {
+              reject(err);
+            }
+          });
+        });
+      }
+      load().then((res) => {
+        Component = res;
+        loaded.value = true;
+      }).catch(() => {
+        error.value = true;
+      }).finally(() => {
+        loading.value = false;
+        clearTimeout(delayTimer);
+      });
+      if (options.delay) {
+        delayTimer = setTimeout(() => {
+          loading.value = true;
+        }, options.delay);
+      }
+      if (options.timeout) {
+        timeoutTimer = setTimeout(() => {
+          error.value = true;
+        }, options.timeout);
+      }
+      return () => {
+        if (loaded.value) {
+          return h(Component);
+        } else if (error.value && options.errorComponent) {
+          return h(options.errorComponent);
+        } else if (loading.value && options.loadingComponent) {
+          return h(options.loadingComponent);
+        }
+        return h("div", "\u9ED8\u8BA4\u7A7A");
+      };
+    }
+  };
+}
+
+// packages/runtime-core/src/apiInject.ts
+function provide(key, value) {
+  if (!currentInstance) return;
+  let provides = currentInstance.provides;
+  const parentProvides = currentInstance.parent?.provides;
+  if (provides === parentProvides) {
+    provides = currentInstance.provides = Object.create(parentProvides);
+  }
+  provides[key] = value;
+}
+function inject(key, defaultValue) {
+  if (!currentInstance) return;
+  const provides = currentInstance.parent?.provides;
+  if (provides && key in provides) {
+    return provides[key];
+  } else if (defaultValue != void 0) {
+    return defaultValue;
+  }
+}
+
 // packages/runtime-dom/src/index.ts
 var renderOptions = Object.assign(nodeOps, { patchProp });
 var render = (vnode, container) => {
@@ -990,22 +1161,35 @@ export {
   Fragment,
   ReactiveEffect,
   ReactiveFlags,
+  TeleportImpl as Teleport,
   Text,
   activeEffect,
   computed,
+  createComponentInstance,
   createRenderer,
   createVNode,
+  currentInstance,
+  defineAsyncComponent,
   effect,
   effectScope,
+  getCurrentInstance,
   h,
+  inject,
   isReactive,
   isSameVnode,
   isVnode,
+  onBeforeMount,
+  onBeforeUpdate,
+  onMounted,
+  onUpdated,
+  provide,
   proxyRefs,
   reactive,
   recordEffectScope,
   ref,
   render,
+  setCurrentInstance,
+  setupComponent,
   toRef,
   toRefs,
   track,

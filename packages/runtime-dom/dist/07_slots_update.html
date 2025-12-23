@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      // import {
+      //   createRenderer,
+      //   h,
+      //   render,
+      //   getCurrentInstance,
+      //   Fragment,
+      //   ref,
+      // } from "/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js";
+
+      import { render, h, Text, Fragment, ref } from "./runtime-dom.esm.js";
+
+      const componentA = {
+        setup(props, ctx) {
+          const { emit, slots } = ctx;
+
+          return () => {
+            return h(Fragment, [
+              ...this.$slots.default(),
+              ...this.$slots.header(),
+            ]);
+          };
+        },
+        // render(proxy) {
+        //   return h(Fragment, [
+        //     h("button", { onClick: proxy.handleClick }, "点我"),
+        //     h("div", proxy.name),
+        //   ]);
+        // },
+      };
+      // todo 这种的vue是怎么处理显示的
+      // render(h("div", { style: { color: "red" } }, "a", "b"), app);
+
+      render(
+        h(componentA, null, {
+          default: () => [h("button", "点我")],
+          header: () => [h("div", {}, "header slot")],
+        }),
+        app
+      );
+
+      setTimeout(() => {
+        render(
+          h(componentA, null, {
+            default: () => [h("button", " new 点我")],
+            header: () => [h("div", {}, "new header slot")],
+          }),
+          app
+        );
+      }, 1000);
+    </script>
+  </body>
+</html>

@@ -2,7 +2,16 @@ import { hasOwn, isFunction, ShapeFlags } from "@vue3/shared";
 import { initProps } from "./initProps";
 import { proxyRefs, reactive } from "@vue3/reactivity";
 
-export function createComponentInstance(vnode) {
+// 全局的instance
+export let currentInstance = null;
+export function setCurrentInstance(instance) {
+  currentInstance = instance;
+}
+export function getCurrentInstance() {
+  return currentInstance;
+}
+
+export function createComponentInstance(vnode, parent) {
   // 创建一个实例, 记录这个组件的一些属性和方法
   const instance = {
     data: null,
@@ -16,6 +25,8 @@ export function createComponentInstance(vnode) {
     proxy: null,
     render: null,
     setupState: {},
+    parent,
+    provides: parent ? parent.provides : Object.create(null),
   };
   return instance;
 }
@@ -59,13 +70,13 @@ function initSlots(instance, children) {
     instance.slots = children;
   }
 }
-
+// 在这执行的setup函数
 export function setupComponent(instance) {
   const { type, props, children } = instance.vnode;
   initProps(instance, props);
   initSlots(instance, children);
   instance.proxy = new Proxy(instance, instanceProxyHandler);
-
+  setCurrentInstance(instance);
   //如果有setup , 则设置上setup
   const setup = type.setup;
   if (setup) {
@@ -95,6 +106,7 @@ export function setupComponent(instance) {
     }
   }
 
+  setCurrentInstance(null);
   let data = type.data;
   if (data) {
     if (isFunction(data)) {

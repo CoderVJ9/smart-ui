@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="root"></div>
+    <div id="root2"></div>
+    <script type="module">
+      // import {
+      //   createRenderer,
+      //   h,
+      //   render,
+      //   getCurrentInstance,
+      //   Fragment,
+      //   ref,
+      // } from "/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-browser.js";
+
+      import {
+        render,
+        h,
+        Text,
+        Fragment,
+        ref,
+        onMounted,
+        getCurrentInstance,
+        defineAsyncComponent,
+        Teleport,
+      } from "./runtime-dom.esm.js";
+
+      render(
+        h(Fragment, null, [
+          h(Teleport, { to: "#root" }, [h("div", "Teleport")]),
+        ]),
+        app
+      );
+      setTimeout(() => {
+        render(
+          h(Fragment, null, [
+            h(Teleport, { to: "#root2" }, [h("div", "Teleport")]),
+          ]),
+          app
+        );
+      }, 1000);
+    </script>
+  </body>
+</html>

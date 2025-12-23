@@ -1,4 +1,5 @@
 import { isObj, isString, ShapeFlags } from "@vue3/shared";
+import { isTeleport } from "./teleport";
 
 export function isVnode(vnode) {
   return vnode && vnode.__v_isVNode;
@@ -11,6 +12,8 @@ export function isSameVnode(vnode1, vnode2) {
 export function createVNode(type, props, children?) {
   const shapeFlag = isString(type)
     ? ShapeFlags.ELEMENT
+    : isTeleport(type)
+    ? ShapeFlags.TELEPORT
     : isObj(type)
     ? ShapeFlags.STATEFUL_COMPONENT
     : 0;

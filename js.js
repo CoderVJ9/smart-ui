@@ -39,18 +39,31 @@ function getSequence(arr) {
   return ans;
 }
 
-function load() {
-  setTimeout(() => {
-    console.log("load1");
-    load();
-  }, 0);
-}
-
-function then1() {
-  Promise.resolve().then(() => {
-    console.log("then1");
-    // then1();
+let count = 0;
+function loader() {
+  return new Promise((resolve, reject) => {
+    console.log("请求一次", count);
+    count++;
+    if (count >= 4) {
+      resolve(1);
+    } else {
+      reject(2);
+    }
   });
 }
-then1();
-load();
+
+function load() {
+  return loader().catch((err) => {
+    return new Promise((resolve) => {
+      resolve(load());
+    });
+  });
+}
+
+load()
+  .then((res) => {
+    console.log("res", res);
+  })
+  .catch((err) => {
+    console.log("err", err);
+  });

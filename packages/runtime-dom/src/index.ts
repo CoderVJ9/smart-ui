@@ -1,7 +1,7 @@
 import { nodeOps } from "./nodeOps";
 import { patchProp } from "./patchProps";
-import { createRenderer } from "@vue3/runtime-core";
-export * from "@vue3/runtime-core";
+import { createRenderer } from "packages/runtime-core/src/render";
+export * from "packages/runtime-core/src/index";
 export * from "@vue3/reactivity";
 
 const renderOptions = Object.assign(nodeOps, { patchProp });

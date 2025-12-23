@@ -1,7 +1,7 @@
 import { isObj } from "@vue3/shared";
 import { createVNode, isVnode } from "./vnode";
 
-export function h(type, propsOrChildren, children) {
+export function h(type, propsOrChildren?, children?) {
   const l = arguments.length;
   // h('div',{}) h('div',{})
   if (l === 2) {

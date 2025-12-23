@@ -6,7 +6,16 @@
     <title>Document</title>
   </head>
   <body>
-    <div class="box"></div>
-    <script></script>
+    <div class="box">
+      <input type="text" id="input" />
+      <button id="button">修改</button>
+    </div>
+    <script>
+      const input = document.getElementById("input");
+      const button = document.getElementById("button");
+      button.addEventListener("click", () => {
+        input.setAttribute("value", "修改成功");
+      });
+    </script>
   </body>
 </html>
